@@ -9,16 +9,26 @@ import UpdateGroupChatModal from './miscellaneous/Modals/UpdateGroupChatModal'
 import axios from 'axios'
 import './styles.css'
 import ScrollableChat from './miscellaneous/ScrollableChat'
+import io from 'socket.io-client'
+import { set } from 'mongoose'
 
 const ENDPOINT = "http://localhost:5000";
 var socket,selectedChatCompare;
+
 const SingleChat = ({fetchAgain,setFetchAgain}) => {
     const { user, selectedChat , setSelectedChat } = ChatState();
     const [loading ,setLoading] = useState(false);
     const [messages , setMessages] = useState([]);
     const [newMessage , setNewmessage] = useState("");
+    const [socketConnected,setsocketConnected] = useState(false);
 
     const toast = useToast();
+    useEffect(()=>{
+      socket = io(ENDPOINT);
+      socket.emit("setup",user);
+      socket.on("connection",()=>setsocketConnected(true));
+    },[]);
+
     const fetchMessages = async()=>{
       if(!selectedChat){
         return;
@@ -37,6 +47,8 @@ const SingleChat = ({fetchAgain,setFetchAgain}) => {
 
         setMessages(data);
         setLoading(false);
+
+        socket.emit("join chat",selectedChat._id)
       }catch(error){
         toast({
           title: "Error Occured",
@@ -51,7 +63,19 @@ const SingleChat = ({fetchAgain,setFetchAgain}) => {
 
     useEffect(()=>{
       fetchMessages();
+
+      selectedChatCompare = selectedChat;
     },[selectedChat]);
+
+    useEffect(()=>{
+      socket.on("message recieved",(newMessageRecieved)=>{
+        if(!selectedChatCompare || selectedChatCompare._id !== newMessageRecieved.chat._id){
+          // give notification
+        }else{
+          setMessages([...messages,newMessageRecieved]);
+        }
+      })
+    })
 
     const sendMessage = async() => {
       if(!newMessage.trimStart()){
@@ -74,6 +98,7 @@ const SingleChat = ({fetchAgain,setFetchAgain}) => {
           config
         )
 
+        socket.emit("new message",data);
         setMessages([...messages,data]);
       }catch(error){
 

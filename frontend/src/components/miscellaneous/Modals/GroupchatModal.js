@@ -66,8 +66,6 @@ const GroupchatModal = ({children}) => {
         return;
       }
       setSelectedUsers([...selectedUsers,user]);
-
-
     }
 
     const removeUser = (user) => {
